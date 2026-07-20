@@ -114,6 +114,7 @@ ORDER BY
 ```
 
 **Output**
+
 ![Customers Ranking by Amount Spent](Images/query2_top_customers_result.png)
 
 **Insight**
@@ -151,6 +152,7 @@ ORDER BY
 ```
 
 **Output**
+
 ![Employee Performance](Images/query3_employee_performance_result.png)
 
 **Insight**
@@ -180,6 +182,7 @@ WHERE UPPER(C.CATEGORY_NAME) = 'BEVERAGES';
 ```
 
 **Output**
+
 ![Suppliers of Beverages](Images/query4_beverage_supperlier_result.png)
 
 **Insight**
@@ -291,6 +294,7 @@ ORDER BY
 ```
 
 **Output**
+
 ![Monthly Revenue](Images/query7_monthly_revenue_result.png)
 
 **Insight**
