@@ -291,7 +291,7 @@ ORDER BY
 ```
 
 **Output**
-![Monthly Revenue](Images\query7_monthly_revenue_result.png)
+![Monthly Revenue](Images/query7_monthly_revenue_result.png)
 
 **Insight**
 
