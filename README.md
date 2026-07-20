@@ -1,247 +1,425 @@
 # 📊 SQL Sales Database Analysis
 
-Analysing a B2B sales database (companies, orders, products suppliers, employees) to answer real business questions using SQL Server — uncovering revenue concentration, top-performing 
-products, and sales team performance.
+Analysing a Business-to-Business (B2B) sales database using **SQL Server** to answer practical business questions around customer value, product performance, supplier management, employee performance, and revenue trends.
 
-## 📌 Overview
+---
 
-This project simulates a business-to-business sales environment, where customers are companies (not individual shoppers) placing repeat orders. Each query answers a specific question a sales  or operations manager might genuinely ask — which customers drive the most revenue, which products sell best, and how evenly sales performance is spread across the team.
+# 📌 Overview
 
-**Tools:** SQL Server 
+This project analyses a relational B2B sales database where customers are companies placing repeat orders. Using SQL Server, I translated real business questions into SQL queries to uncover insights that could support sales, operations, and inventory decisions.
 
-## 🗃️ Database Schema
+Rather than simply writing SQL queries, the focus of this project is on extracting actionable business insights from relational data.
 
-| Table | Purpose |
-|---|---|
-| CUSTOMERS | Customer companies and contact details |
-| ORDERS | Customer orders and shipping information |
-| ORDER_DETAILS | Line items (products, quantity, price) per order |
-| PRODUCTS | Product catalogue and inventory |
-| CATEGORIES | Product categories |
-| SUPPLIERS | Product suppliers |
-| EMPLOYEES | Staff handling orders |
+**Tools**
 
-**Relationships:** Customers → Orders → Order Details ← Products ← Categories / Suppliers · Employees → Orders
+* SQL Server
+
+---
+
+# 🗃️ Database Schema
+
+| Table         | Purpose                                                |
+| ------------- | ------------------------------------------------------ |
+| CUSTOMERS     | Customer companies and contact details                 |
+| ORDERS        | Customer orders and shipping information               |
+| ORDER_DETAILS | Order line items (products, quantity, price, discount) |
+| PRODUCTS      | Product catalogue and inventory                        |
+| CATEGORIES    | Product categories                                     |
+| SUPPLIERS     | Product suppliers                                      |
+| EMPLOYEES     | Employees responsible for customer orders              |
+
+### Relationships
+
+```
+Customers
+    │
+    ▼
+Orders
+    │
+    ▼
+Order Details
+   ▲      ▲
+   │      │
+Products  Employees
+   │
+   ├── Categories
+   └── Suppliers
+```
+
+### Entity Relationship Diagram
 
 ![ERD](Images/ERD.png)
+---
 
-## 🔍 Business questions & findings
+# 🔍 Business Questions & Findings
 
-### 1. Which products dr
-ive the most volume?
-**Question:** Which products should we prioritise for restocking and promotion?
+## 1. Which products drive the highest sales volume?
+
+**Business Question**
+
+> Which products should we prioritise for restocking and promotion?
 
 ```sql
-SELECT 
+SELECT
     P.PRODUCT_REF,
     P.PRODUCT_NAME,
     SUM(OD.QUANTITY) AS Total_Quantity_Sold
 FROM ORDER_DETAILS OD
-JOIN PRODUCTS P 
+JOIN PRODUCTS P
     ON OD.PRODUCT_REF = P.PRODUCT_REF
-GROUP BY 
-    P.PRODUCT_REF, 
+GROUP BY
+    P.PRODUCT_REF,
     P.PRODUCT_NAME
-ORDER BY 
+ORDER BY
     Total_Quantity_Sold DESC;
 ```
 
-**Output** 
+**Output**
+
 ![Top Products Result](Images/query1_top_product_result.jpg)
 
-**Insight:** [ e.g. "Sales are concentrated — the top X products account for Y% of total volume." ]
+
+**Insight**
+
+Product demand is concentrated among a relatively small group of products. These high-volume products should be prioritised for inventory planning and promotional campaigns, while lower-selling products may require stocking optimisation or demand review.
 
 ---
 
-### 2. Who are our highest-value customers?
-**Question:** Which customers contribute the most revenue, and should be prioritised for account management?
+## 2. Who are our highest-value customers?
+
+**Business Question**
+
+> Which customers contribute the most revenue and should be prioritised for account management?
 
 ```sql
-SELECT 
+SELECT
     C.CUSTOMER_CODE,
     C.COMPANY,
     SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) AS Customer_Spend,
     ROUND(
-        SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) * 100.0 
-        / (SELECT SUM(QUANTITY * UNIT_PRICE * (1 - DISCOUNT)) FROM ORDER_DETAILS), 
+        SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) * 100.0
+        / (SELECT SUM(QUANTITY * UNIT_PRICE * (1 - DISCOUNT)) FROM ORDER_DETAILS),
         2
     ) AS Percent_Of_Total_Revenue
 FROM CUSTOMERS C
-JOIN ORDERS O 
+JOIN ORDERS O
     ON C.CUSTOMER_CODE = O.CUSTOMER_CODE
-JOIN ORDER_DETAILS OD 
+JOIN ORDER_DETAILS OD
     ON O.ORDER_NUMBER = OD.ORDER_NUMBER
-GROUP BY 
-    C.CUSTOMER_CODE, 
+GROUP BY
+    C.CUSTOMER_CODE,
     C.COMPANY
-ORDER BY 
-    Customer_Spend DESC;   
+ORDER BY
+    Customer_Spend DESC;
 ```
+
 **Output**
 ![Customers Ranking by Amount Spent](Images/query2_top_customers_result.png)
 
-**Insight:** Our top 5 customers (5.6% of our 89-customer base) contribute 29.31% of total revenue — a strong signal for where to prioritise account management and retention effort.
+**Insight**
+
+The top five customers (5.6% of the 89-customer base) generated **29.31% of total revenue**, demonstrating that revenue is concentrated among a small number of key accounts. These customers should be prioritised for retention, relationship management, and personalised service.
 
 ---
 
-### 3. How is sales performance distributed across employees?
-**Question:** Are sales concentrated among a few top performers, or evenly spread?
+## 3. How is sales performance distributed across employees?
+
+**Business Question**
+
+> Are sales concentrated among a few top performers or evenly distributed across the team?
 
 ```sql
-SELECT 
-    E.FIRST_NAME, 
+SELECT
+    E.FIRST_NAME,
     E.LAST_NAME,
     SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) AS Total_Sales,
     ROUND(
-        SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) * 100.0 
-        / (SELECT SUM(QUANTITY * UNIT_PRICE * (1 - DISCOUNT)) FROM ORDER_DETAILS), 
+        SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) * 100.0
+        / (SELECT SUM(QUANTITY * UNIT_PRICE * (1 - DISCOUNT)) FROM ORDER_DETAILS),
         2
     ) AS Pct_Of_Total_Revenue
 FROM EMPLOYEES E
-JOIN ORDERS O ON E.EMPLOYEE_ID = O.EMPLOYEE_ID
-JOIN ORDER_DETAILS OD ON O.ORDER_NUMBER = OD.ORDER_NUMBER
-GROUP BY E.FIRST_NAME, E.LAST_NAME
-ORDER BY Total_Sales DESC;
+JOIN ORDERS O
+    ON E.EMPLOYEE_ID = O.EMPLOYEE_ID
+JOIN ORDER_DETAILS OD
+    ON O.ORDER_NUMBER = OD.ORDER_NUMBER
+GROUP BY
+    E.FIRST_NAME,
+    E.LAST_NAME
+ORDER BY
+    Total_Sales DESC;
 ```
+
 **Output**
 ![Employee Performance](Images/query3_employee_performance_result.png)
 
-**Insight:** 3 of 9 employees (33% of the sales team) generated 51.14% of total revenue — a moderate concentration, roughly 1.5x their proportional share. Worth understanding whether this reflects account size, tenure, or territory rather than assuming underperformance elsewhere.
+**Insight**
+
+Three of the nine employees (33% of the sales team) generated **51.14% of total revenue**, indicating moderate sales concentration. This may reflect differences in customer portfolios, territories, or tenure rather than individual performance alone.
 
 ---
 
-### 4. Which suppliers provide beverages?
-**Question:** Who are our current beverage suppliers, in case of supply chain risk or renegotiation?
+## 4. Which suppliers provide beverages?
+
+**Business Question**
+
+> Which suppliers currently provide beverage products?
+
 ```sql
-SELECT DISTINCT 
-    s.SUPPLIER_ID,
-    s.COMPANY,
-    s.ADDRESS,
-    s.PHONE
-FROM SUPPLIERS s
-JOIN PRODUCTS p 
-    ON s.SUPPLIER_ID = p.SUPPLIER_ID
-JOIN CATEGORIES c 
-    ON p.CATEGORY_CODE = c.CATEGORY_CODE
-WHERE UPPER(c.CATEGORY_NAME) = 'Beverages';
+SELECT DISTINCT
+    S.SUPPLIER_ID,
+    S.COMPANY,
+    S.ADDRESS,
+    S.PHONE
+FROM SUPPLIERS S
+JOIN PRODUCTS P
+    ON S.SUPPLIER_ID = P.SUPPLIER_ID
+JOIN CATEGORIES C
+    ON P.CATEGORY_CODE = C.CATEGORY_CODE
+WHERE UPPER(C.CATEGORY_NAME) = 'BEVERAGES';
 ```
 
-**Output:**
+**Output**
 ![Suppliers of Beverages](Images/query4_beverage_supperlier_result.png)
+
+**Insight**
+
+The query identifies the suppliers responsible for the beverage category, providing visibility into supplier dependency and supporting procurement planning, supplier negotiations, and contingency planning.
+
 ---
 
-### 5. Which customers have ordered every product in the catalogue?
-**Question:** Identifying our most "complete" customers — useful for case studies or loyalty targeting.
+## 5. Which customers have ordered every product in the catalogue?
 
-```sql 
-SELECT c.CUSTOMER_CODE, c.COMPANY, c.PHONE
-FROM CUSTOMERS c
-WHERE c.CUSTOMER_CODE IN (
-    SELECT o.CUSTOMER_CODE
-    FROM ORDERS o
-    JOIN ORDER_DETAILS od ON o.ORDER_NUMBER = od.ORDER_NUMBER
-    GROUP BY o.CUSTOMER_CODE
-    HAVING COUNT(DISTINCT od.PRODUCT_REF) = (SELECT COUNT(*) FROM PRODUCTS)
-);
-``` 
+**Business Question**
 
-**Output:** 
-![The Complete Customer](Images/query5_complete_customer_result.png)
----
-
-### 6. RANK PRODUCTS BY SALES WITHIN EACH CATEGORY — NOT JUST OVERALL
-**Question:** Which product is the top performer *within its own category* — useful for category managers, not just overall bestseller lists?
+> Which customers have purchased every available product?
 
 ```sql
-SELECT 
+SELECT
+    C.CUSTOMER_CODE,
+    C.COMPANY,
+    C.PHONE
+FROM CUSTOMERS C
+WHERE C.CUSTOMER_CODE IN
+(
+    SELECT O.CUSTOMER_CODE
+    FROM ORDERS O
+    JOIN ORDER_DETAILS OD
+        ON O.ORDER_NUMBER = OD.ORDER_NUMBER
+    GROUP BY O.CUSTOMER_CODE
+    HAVING COUNT(DISTINCT OD.PRODUCT_REF) =
+        (SELECT COUNT(*) FROM PRODUCTS)
+);
+```
+
+**Output**
+
+![The Complete Customer](Images/query5_complete_customer_result.png)
+
+**Insight**
+
+Only VINET has purchased every product in the catalogue, making the company valuable candidate for loyalty programmes, customer success stories, and premium account management.
+
+---
+
+## 6. Which products perform best within each category?
+
+**Business Question**
+
+> Which products are category leaders rather than simply overall best sellers?
+
+```sql
+SELECT
     C.CATEGORY_NAME,
     P.PRODUCT_NAME,
     SUM(OD.QUANTITY) AS Units_Sold,
-    RANK() OVER (PARTITION BY C.CATEGORY_NAME ORDER BY SUM(OD.QUANTITY) DESC) AS Rank_In_Category
+    RANK() OVER
+    (
+        PARTITION BY C.CATEGORY_NAME
+        ORDER BY SUM(OD.QUANTITY) DESC
+    ) AS Rank_In_Category
 FROM ORDER_DETAILS OD
-JOIN PRODUCTS P ON OD.PRODUCT_REF = P.PRODUCT_REF
-JOIN CATEGORIES C ON P.CATEGORY_CODE = C.CATEGORY_CODE
-GROUP BY C.CATEGORY_NAME, P.PRODUCT_NAME
-ORDER BY C.CATEGORY_NAME, Rank_In_Category;
+JOIN PRODUCTS P
+    ON OD.PRODUCT_REF = P.PRODUCT_REF
+JOIN CATEGORIES C
+    ON P.CATEGORY_CODE = C.CATEGORY_CODE
+GROUP BY
+    C.CATEGORY_NAME,
+    P.PRODUCT_NAME
+ORDER BY
+    C.CATEGORY_NAME,
+    Rank_In_Category;
 ```
-**Output** ![Product's Ranking Within Each Categories](Images/query6_ranking_within_categories_result.png)
+
+**Output**
+
+![Product's Ranking Within Each Categories](Images/query6_ranking_within_categories_result.png)
+
+
+**Insight**
+
+Ranking products within their own categories reveals category leaders that may not appear among the overall best-selling products. This provides more meaningful insights for category managers and merchandising decisions.
 
 ---
 
-### 7. RUNNING TOTAL OF MONTHLY REVENUE — TRACK CUMULATIVE GROWTH
-**Question:** How is revenue accumulating month over month — are we on a growth trajectory?
+## 7. How has revenue accumulated over time?
+
+**Business Question**
+
+> How has revenue grown month by month?
 
 ```sql
-SELECT 
+SELECT
     YEAR(O.ORDER_DATE) AS Order_Year,
     MONTH(O.ORDER_DATE) AS Order_Month_Num,
     SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) AS Monthly_Revenue,
-    SUM(SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT))) 
-        OVER (ORDER BY YEAR(O.ORDER_DATE), MONTH(O.ORDER_DATE)) AS Running_Total_Revenue
+    SUM(
+        SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT))
+    ) OVER
+    (
+        ORDER BY YEAR(O.ORDER_DATE), MONTH(O.ORDER_DATE)
+    ) AS Running_Total_Revenue
 FROM ORDERS O
-JOIN ORDER_DETAILS OD ON O.ORDER_NUMBER = OD.ORDER_NUMBER
-GROUP BY YEAR(O.ORDER_DATE), MONTH(O.ORDER_DATE)
-ORDER BY Order_Year, Order_Month_Num;​
+JOIN ORDER_DETAILS OD
+    ON O.ORDER_NUMBER = OD.ORDER_NUMBER
+GROUP BY
+    YEAR(O.ORDER_DATE),
+    MONTH(O.ORDER_DATE)
+ORDER BY
+    Order_Year,
+    Order_Month_Num;
 ```
 
-**Output** ![Monthly Revenue](Images/query7_monthly_revenue_result.png)
+**Output**
+![Monthly Revenue](Images\query7_monthly_revenue_result.png)
+
+**Insight**
+
+Revenue experienced normal month-to-month fluctuations throughout the period analysed, with periods of decline followed by recovery. The cumulative revenue trend continued to increase over time, providing a clearer picture of long-term business performance than monthly revenue alone.
+
 ---
 
+## 8. What is each customer's favourite product?
 
-### 8. EACH CUSTOMER'S SINGLE FAVOURITE PRODUCT
-**Question:** For personalised outreach or upsell — what's each top customer's single most-ordered product?
+**Business Question**
+
+> What is each customer's most frequently ordered product?
 
 ```sql
 SELECT Company, Product_Name, Units_Ordered
-FROM (
-    SELECT 
+FROM
+(
+    SELECT
         C.COMPANY,
         P.PRODUCT_NAME,
         SUM(OD.QUANTITY) AS Units_Ordered,
-        ROW_NUMBER() OVER (PARTITION BY C.COMPANY ORDER BY SUM(OD.QUANTITY) DESC) AS rating_number
+        ROW_NUMBER() OVER
+        (
+            PARTITION BY C.COMPANY
+            ORDER BY SUM(OD.QUANTITY) DESC
+        ) AS Rating_Number
     FROM CUSTOMERS C
-    JOIN ORDERS O ON C.CUSTOMER_CODE = O.CUSTOMER_CODE
-    JOIN ORDER_DETAILS OD ON O.ORDER_NUMBER = OD.ORDER_NUMBER
-    JOIN PRODUCTS P ON OD.PRODUCT_REF = P.PRODUCT_REF
-    GROUP BY C.COMPANY, P.PRODUCT_NAME
-) ranked
-WHERE rating_number = 1
-ORDER BY Product_Name, Units_Ordered DESC;
+    JOIN ORDERS O
+        ON C.CUSTOMER_CODE = O.CUSTOMER_CODE
+    JOIN ORDER_DETAILS OD
+        ON O.ORDER_NUMBER = OD.ORDER_NUMBER
+    JOIN PRODUCTS P
+        ON OD.PRODUCT_REF = P.PRODUCT_REF
+    GROUP BY
+        C.COMPANY,
+        P.PRODUCT_NAME
+) Ranked
+WHERE Rating_Number = 1;
 ```
-**Output** ![Customer's Favourite Product](Images/query8_customers_favourite_result.png)
+
+**Output**
+
+ ![Customer's Favourite Product](Images/query8_customers_favourite_result.png)
+
+**Insight**
+
+Each customer has a clearly identifiable most frequently ordered product, revealing unique purchasing preferences. Some customers repeatedly order high volumes of a single product (up to 75 units), while others display more modest purchasing patterns. These insights can help sales teams personalise customer interactions, recommend complementary products, and improve inventory planning by anticipating repeat demand.
 
 ---
 
-### 9. How many orders came from France?
+## 9. Which countries generate the highest revenue?
+
+**Business Question**
+
+> Which markets generate the most revenue, and where should the business focus its sales efforts?
+
 ```sql
-SELECT 
-    c.CUSTOMER_CODE, c.COMPANY,
-    COUNT(o.ORDER_NUMBER) AS number_of_orders
-FROM CUSTOMERS c
-LEFT JOIN ORDERS o 
-    ON c.CUSTOMER_CODE = o.CUSTOMER_CODE
-WHERE c.COUNTRY = 'France'
-GROUP BY c.CUSTOMER_CODE, c.COMPANY;
+SELECT
+    C.COUNTRY,
+    SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) AS Total_Revenue,
+    ROUND(
+        SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT))
+        *100.0/
+        (
+            SELECT SUM(QUANTITY*UNIT_PRICE*(1-DISCOUNT))
+            FROM ORDER_DETAILS
+        ),
+        2
+    ) AS Percent_Of_Total_Revenue
+FROM CUSTOMERS C
+JOIN ORDERS O
+    ON C.CUSTOMER_CODE = O.CUSTOMER_CODE
+JOIN ORDER_DETAILS OD
+    ON O.ORDER_NUMBER = OD.ORDER_NUMBER
+GROUP BY
+    C.COUNTRY
+ORDER BY
+    Total_Revenue DESC;
 ```
 
-**Output:** ![Customers Orders from France](Images/query9_customers_in_france_orders_result.png)
+**Output**
 
-## ⚠️ Challenges & how I solved them
+ ![Highest Revenue Country](Images/query9_highest_revenue_country_result.png)
 
-| Challenge | Resolution |
-|---|---|
-| Dataset used `DD/MM/YY` dates, causing conversion errors | Used `SET DATEFORMAT DMY` and standardised formats |
-| Foreign key errors on insert | Learned to respect insertion order — parent tables before child tables |
-| Decimal values failing on integer columns | Adjusted column types (e.g. `DECIMAL` for prices) |
 
-## 💡 Key learnings
+**Insight**
 
-- Translating business questions into SQL logic, not just writing queries for their own sake
-- Importance of referential integrity in relational schema design
-- Debugging real data issues rather than working with clean, ready-made data
-- Writing structured, readable SQL that others could pick up and follow
+Although the business serves customers across 21 countries, revenue is concentrated in a relatively small number of markets. Germany and the United States alone generated 33.33% of total revenue, suggesting that a few key markets drive a significant share of sales. Understanding this geographic concentration can help prioritise regional sales strategies while identifying opportunities to grow lower-performing markets.
 
-## 🚀 Next steps
+---
 
-- Build a Power BI / Tableau dashboard on top of these queries
-- Extend into customer segmentation (RFM analysis)
+# 📈 Business Impact
+
+This analysis demonstrates how SQL can support data-driven business decisions by:
+
+- Identifying high-value customers for targeted account management and retention.
+- Revealing top-selling products to improve inventory planning and promotional strategies.
+- Evaluating sales performance across employees to understand revenue distribution within the sales team.
+- Monitoring cumulative revenue trends over time to track overall business performance.
+- Supporting supplier and category management through product and supplier analysis.
+- Understanding customer purchasing behaviour to enable personalised marketing and cross-selling opportunities.
+- Identifying high-performing geographic markets and highlighting key regions for strategic sales investment and future growth.
+
+---
+
+# ⚠️ Challenges & Solutions
+
+| Challenge                                              | Solution                                                                   |
+| ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| Date conversion errors caused by DD/MM/YYYY formatting | Used `SET DATEFORMAT DMY` to standardise date interpretation               |
+| Foreign key constraint errors during data loading      | Loaded parent tables before child tables to preserve referential integrity |
+| Decimal values failing on integer columns              | Updated data types (e.g., `DECIMAL`) to match the source data              |
+
+---
+
+## 💡 Key Learnings
+
+- Revenue is concentrated among a relatively small group of customers, highlighting the importance of customer retention and strategic account management.
+- Sales performance varies across employees, suggesting that customer portfolios, territories, or experience may influence revenue distribution.
+- Product demand is uneven across the catalogue, making inventory prioritisation more effective than treating all products equally.
+- Revenue is also geographically concentrated, with a small number of countries contributing a significant share of total sales, highlighting key markets for customer retention and future business growth.
+- Reliable business insights depend on maintaining referential integrity, appropriate data types, and clean relational data.
+- Effective SQL analysis goes beyond writing queries—it requires translating business questions into meaningful, actionable insights.
+
+---
+
+# 📂 Dataset
+
+This project uses a relational sales database containing information on customers, orders, products, suppliers, employees, and product categories. The dataset is designed to simulate a real-world B2B sales environment and support business-focused SQL analysis.
+
+---
