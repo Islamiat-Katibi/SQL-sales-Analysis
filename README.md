@@ -76,7 +76,7 @@ ORDER BY
 
 **Output**
 
-![Top Products Result](Images/query1_top_product_result.jpg)
+![Top Products Result](Images/query1_top_product_result.png)
 
 
 **Insight**
@@ -221,7 +221,7 @@ WHERE C.CUSTOMER_CODE IN
 
 **Insight**
 
-Only VINET has purchased every product in the catalogue, making the company valuable candidate for loyalty programmes, customer success stories, and premium account management.
+Only Vintage Foods has purchased every product in the catalogue, making the company valuable candidate for loyalty programmes, customer success stories, and premium account management.
 
 ---
 
@@ -273,8 +273,7 @@ Ranking products within their own categories reveals category leaders that may n
 
 ```sql
 SELECT
-    YEAR(O.ORDER_DATE) AS Order_Year,
-    MONTH(O.ORDER_DATE) AS Order_Month_Num,
+    FORMAT(O.ORDER_DATE, 'MMM yyyy') AS [Month],
     SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT)) AS Monthly_Revenue,
     SUM(
         SUM(OD.QUANTITY * OD.UNIT_PRICE * (1 - OD.DISCOUNT))
@@ -287,10 +286,11 @@ JOIN ORDER_DETAILS OD
     ON O.ORDER_NUMBER = OD.ORDER_NUMBER
 GROUP BY
     YEAR(O.ORDER_DATE),
-    MONTH(O.ORDER_DATE)
+    MONTH(O.ORDER_DATE),
+    FORMAT(O.ORDER_DATE, 'MMM yyyy')
 ORDER BY
-    Order_Year,
-    Order_Month_Num;
+    YEAR(O.ORDER_DATE),
+    MONTH(O.ORDER_DATE);
 ```
 
 **Output**
@@ -383,22 +383,30 @@ ORDER BY
 
 **Insight**
 
-Although the business serves customers across 21 countries, revenue is concentrated in a relatively small number of markets. Germany and the United States alone generated 33.33% of total revenue, suggesting that a few key markets drive a significant share of sales. Understanding this geographic concentration can help prioritise regional sales strategies while identifying opportunities to grow lower-performing markets.
+Although the business serves customers across 21 countries, revenue is concentrated in a relatively small number of markets. Nigeria and the Morocco alone generated 33.33% of total revenue, suggesting that a few key markets drive a significant share of sales. Understanding this geographic concentration can help prioritise regional sales strategies while identifying opportunities to grow lower-performing markets.
+
+---
+## 🔍 Key Findings
+
+- Revenue is concentrated among a relatively small group of customers, highlighting the importance of customer retention and strategic account management.
+- Sales performance varies across employees, suggesting differences in customer portfolios, territories, or sales opportunities.
+- Product demand is uneven across the catalogue, making inventory prioritisation more effective than treating all products equally.
+- A small number of markets contribute a significant share of total revenue, highlighting priority regions for future sales growth.
+- Monthly revenue shows an overall upward trend, indicating steady business growth over the analysis period.
 
 ---
 
-# 📈 Business Impact
+## 📈 Business Impact
 
 This analysis demonstrates how SQL can support data-driven business decisions by:
 
 - Identifying high-value customers for targeted account management and retention.
 - Revealing top-selling products to improve inventory planning and promotional strategies.
-- Evaluating sales performance across employees to understand revenue distribution within the sales team.
-- Monitoring cumulative revenue trends over time to track overall business performance.
-- Supporting supplier and category management through product and supplier analysis.
-- Understanding customer purchasing behaviour to enable personalised marketing and cross-selling opportunities.
-- Identifying high-performing geographic markets and highlighting key regions for strategic sales investment and future growth.
-
+- Evaluating employee sales performance to support coaching, workload balancing, and performance monitoring.
+- Monitoring monthly and cumulative revenue trends to track business growth over time.
+- Supporting supplier and category management through product performance analysis.
+- Understanding customer purchasing behaviour to enable targeted marketing and cross-selling opportunities.
+- Identifying high-performing markets to guide strategic sales investment and future expansion.
 ---
 
 # ⚠️ Challenges & Solutions
@@ -408,17 +416,6 @@ This analysis demonstrates how SQL can support data-driven business decisions by
 | Date conversion errors caused by DD/MM/YYYY formatting | Used `SET DATEFORMAT DMY` to standardise date interpretation               |
 | Foreign key constraint errors during data loading      | Loaded parent tables before child tables to preserve referential integrity |
 | Decimal values failing on integer columns              | Updated data types (e.g., `DECIMAL`) to match the source data              |
-
----
-
-## 💡 Key Learnings
-
-- Revenue is concentrated among a relatively small group of customers, highlighting the importance of customer retention and strategic account management.
-- Sales performance varies across employees, suggesting that customer portfolios, territories, or experience may influence revenue distribution.
-- Product demand is uneven across the catalogue, making inventory prioritisation more effective than treating all products equally.
-- Revenue is also geographically concentrated, with a small number of countries contributing a significant share of total sales, highlighting key markets for customer retention and future business growth.
-- Reliable business insights depend on maintaining referential integrity, appropriate data types, and clean relational data.
-- Effective SQL analysis goes beyond writing queries—it requires translating business questions into meaningful, actionable insights.
 
 ---
 
